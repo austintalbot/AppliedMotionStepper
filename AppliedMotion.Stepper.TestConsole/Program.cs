@@ -20,9 +20,7 @@ namespace AppliedMotion.Stepper.TestConsole
                 sc.GetStatus();
 
                 Thread.Sleep(500);
-                Console.WriteLine($"Model: {sc.Sm.Model}");
-                Console.WriteLine($"Status: {sc.Sm.MotorStatus}");
-
+                
                 System.Threading.Thread.Sleep(2000);
 
                 Console.WriteLine("Resetting position to 0");
@@ -31,7 +29,7 @@ namespace AppliedMotion.Stepper.TestConsole
                 Console.WriteLine("Moving...");
 
                 System.Threading.Thread.Sleep(2000);
-                sc.StartJog(5, 25, 25);
+                sc.StartJog(-0.5, 25, 25);
                 System.Threading.Thread.Sleep(2500);
                 sc.ChangeJogSpeed(2.5);
                 System.Threading.Thread.Sleep(2500);
@@ -83,7 +81,7 @@ namespace AppliedMotion.Stepper.TestConsole
                         long position = (long)Convert.ToDouble(Console.ReadLine());
                         sc.MoveToAbsolutePosition(position);
                         sc.GetEncoderPosition();
-                        Console.WriteLine($"Current Position: {sc.Sm.EncoderPosition})");
+                        Console.WriteLine($"Current Position: {sc.Sm.EncoderPosition}");
                     }
                     catch (Exception e)
                     {

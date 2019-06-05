@@ -129,8 +129,9 @@ namespace AppliedMotion.Stepper
         {
             const string motorStatusResponse = "SC=";
             const string alarmResponse = "AL=";
-            const string positionResponse = "SP=";
+            const string positionResponse = "IP=";
             const string encoderCountsResponse = "IE=";
+            const string encoderPositionResponse = "EP=";
             const string modelResponse = "MV";
 
             try
@@ -162,18 +163,27 @@ namespace AppliedMotion.Stepper
                 {
                     int first = response.IndexOf(positionResponse) + positionResponse.Length;
                     int last = response.LastIndexOf("\r");
-                    string ExtractedString = response.Substring(first, last - first);
-                    long encoderPosition = long.Parse(ExtractedString);
+                    string extractedString = response.Substring(first, last - first);
+                    long encoderPosition = long.Parse(extractedString);
                     Sm.EncoderPosition = encoderPosition;
                 }
                 else if (response.Contains(motorStatusResponse))
                 {
                     int first = response.IndexOf(motorStatusResponse) + motorStatusResponse.Length;
                     int last = response.LastIndexOf("\r");
-                    string ExtractedString = response.Substring(first, last - first);
-                    int responseCode = Convert.ToInt32(ExtractedString);
+                    string extractedString = response.Substring(first, last - first);
+                    int responseCode = Convert.ToInt32(extractedString);
                     BitArray bA = new BitArray(System.BitConverter.GetBytes(responseCode));
                     Sm.MotorStatus = new Stepper.MotorStatus(bA);
+                }
+                else if (response.Contains(encoderPositionResponse))
+                {
+                    int first = response.IndexOf(encoderPositionResponse) + encoderPositionResponse.Length;
+                    int last = response.LastIndexOf("\r");
+                    string extractedString = response.Substring(first, last - first);
+
+                    Sm.encoderCounts = Convert.ToDouble(extractedString);
+
                 }
                 else
                 {

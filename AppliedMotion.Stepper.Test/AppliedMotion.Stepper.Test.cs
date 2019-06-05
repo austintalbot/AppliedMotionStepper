@@ -6,7 +6,7 @@ using System.Threading;
 namespace AppliedMotion.Stepper
 {
     [TestClass]
-    public class UnitTest1
+    public class AppliedMotionStepperTest
     {
         #region Fields
 
@@ -46,19 +46,27 @@ namespace AppliedMotion.Stepper
         {
             StepperController sc = new StepperController(IP);
             sc.EnableMotor();
+            //sc.ResetEncoderPosition(0);
             sc.startListening();
             sc.GetEncoderCounts();
-            Thread.Sleep(1000);
-            Debug.Print($"EncoderCounts = {sc.Sm.encoderCounts}");
-            double counts = sc.Sm.encoderCounts;
+            sc.GetEncoderPosition();
+            Thread.Sleep(100);
+            Debug.Print($"Encoder position= {sc.Sm.EncoderPosition}");
+            Debug.Print($"Encoder counts= {sc.Sm.encoderCounts}");
+            double counts = sc.Sm.EncoderPosition;
 
-            sc.MoveToAbsolutePosition(51200);
+            sc.StartJog(5,5,5);
+            Thread.Sleep(1000);
+            sc.StopJog();
+            sc.GetEncoderPosition();
             sc.GetEncoderCounts();
-            Thread.Sleep(1000);
+            Thread.Sleep(2000);
             double newCounts = sc.Sm.encoderCounts;
-
-            Debug.Print($"EncoderCounts = {sc.Sm.encoderCounts}");
+            double newPosition = sc.Sm.EncoderPosition;
+            Debug.Print($"Encoder position= {sc.Sm.EncoderPosition}");
+            Debug.Print($"Encoder counts= {sc.Sm.encoderCounts}");
             Thread.Sleep(1000);
+            Assert.AreEqual(sc.Sm.EncoderPosition, newPosition);
             Assert.AreEqual(sc.Sm.encoderCounts, newCounts);
             sc.Dispose();
         }

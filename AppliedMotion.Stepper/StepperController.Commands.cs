@@ -35,12 +35,12 @@ namespace AppliedMotion.Stepper
 
         public void GetEncoderCounts()
         {
-            SendSclCommand("IE");
+            SendSclCommand("EP");
         }
 
         public void GetEncoderPosition()
         {
-            SendSclCommand("SP");
+            SendSclCommand("IP");
         }
 
         public void GetModel()
