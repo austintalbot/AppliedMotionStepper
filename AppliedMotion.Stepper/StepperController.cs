@@ -34,8 +34,51 @@ namespace AppliedMotion.Stepper
             _udpClient.AllowNatTraversal(true);
             //_udpClient.ExclusiveAddressUse = false;
             _udpClient.Connect(Sm.Ip, ListenPort);
+        }
 
-            
+        #endregion Constructors
+
+        #region Methods
+
+        public void Dispose()
+        {
+            Sm.Dispose();
+            _udpClient.Close();
+            _udpClient?.Dispose();
+        }
+
+        public string SendSclCommandAndGetResponse(string command)
+        {
+            return SendSclCommandAndGetResponse(command, TimeSpan.FromSeconds(1));
+        }
+
+        public string SendSclCommandAndGetResponse(string command, TimeSpan timeout)
+        {
+            int responseTimeout = 5000;
+            Stopwatch swConflictTimeout = new Stopwatch();
+            swConflictTimeout.Start();
+            while (_waitingForResponse && swConflictTimeout.ElapsedMilliseconds < responseTimeout)
+            {
+                Thread.Sleep(10);
+            }
+
+            _waitingForResponse = true;
+            SendSclCommand(command);
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            while (sw.Elapsed < timeout)
+            {
+                string responseText = GetResponse();
+                if (!string.IsNullOrWhiteSpace(responseText))
+                {
+                    Debug.Print($"RX: {responseText} @ {DateTime.Now:hh:mm:ss}");
+                    return responseText.Trim();
+                }
+
+                System.Threading.Thread.Sleep(10);
+            }
+
+            return null;
         }
 
         public void startListening()
@@ -48,17 +91,6 @@ namespace AppliedMotion.Stepper
             {
                 Console.WriteLine(e.ToString());
             }
-        }
-
-        #endregion Constructors
-
-        #region Methods
-
-        public void Dispose()
-        {
-            Sm.Dispose();
-            _udpClient.Close();
-            _udpClient?.Dispose();
         }
 
         private string GetResponse()
@@ -95,7 +127,6 @@ namespace AppliedMotion.Stepper
         //CallBack
         private void ReceiveCallBack(IAsyncResult res)
         {
-
             const string motorStatusResponse = "SC=";
             const string alarmResponse = "AL=";
             const string positionResponse = "SP=";
@@ -104,7 +135,6 @@ namespace AppliedMotion.Stepper
 
             try
             {
-
                 IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, ListenPort);
                 byte[] received = _udpClient.EndReceive(res, ref remoteIpEndPoint);
 
@@ -158,39 +188,6 @@ namespace AppliedMotion.Stepper
             }
         }
 
-        public string SendSclCommandAndGetResponse(string command)
-        {
-            return SendSclCommandAndGetResponse(command, TimeSpan.FromSeconds(1));
-        }
-
-        public string SendSclCommandAndGetResponse(string command, TimeSpan timeout)
-        {
-            int responseTimeout = 5000;
-            Stopwatch swConflictTimeout = new Stopwatch();
-            swConflictTimeout.Start();
-            while (_waitingForResponse && swConflictTimeout.ElapsedMilliseconds < responseTimeout)
-            {
-                System.Threading.Thread.Sleep(10);
-            }
-
-            _waitingForResponse = true;
-            SendSclCommand(command);
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
-            while (sw.Elapsed < timeout)
-            {
-                string responseText = GetResponse();
-                if (!string.IsNullOrWhiteSpace(responseText))
-                {
-                    Debug.Print($"RX: {responseText} @ {DateTime.Now.ToString("hh:mm:ss")}");
-                    return responseText.Trim();
-                }
-
-                System.Threading.Thread.Sleep(10);
-            }
-
-            return null;
-        }
         private void SendSclCommand(string command)
         {
             byte[] sclString = Encoding.ASCII.GetBytes(command);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Threading;
 
 namespace AppliedMotion.Stepper
 {
@@ -101,11 +102,12 @@ namespace AppliedMotion.Stepper
 
         public void StartJog(double speed, double acceleration, double deceleration)
         {
-            SendSclCommandAndGetResponse($"JS{Math.Round(speed, 2)}");
-            SendSclCommandAndGetResponse($"JA{Math.Round(acceleration, 2)}");
-            SendSclCommandAndGetResponse($"JL{Math.Round(deceleration, 2)}");
-            SendSclCommandAndGetResponse("JM1");
-            SendSclCommandAndGetResponse("CJ");
+            SendSclCommand($"JS{Math.Round(speed, 2)}");
+            SendSclCommand($"JA{Math.Round(acceleration, 2)}");
+            SendSclCommand($"JL{Math.Round(deceleration, 2)}");
+            SendSclCommand("JM1");
+            Thread.Sleep(50);
+            SendSclCommand("CJ");
         }
 
         public void Stop()

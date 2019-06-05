@@ -22,25 +22,23 @@ namespace AppliedMotion.Stepper.TestConsole
                 Thread.Sleep(500);
                 Console.WriteLine($"Model: {sc.Sm.Model}");
                 Console.WriteLine($"Status: {sc.Sm.MotorStatus}");
-               
+
                 System.Threading.Thread.Sleep(2000);
 
                 Console.WriteLine("Resetting position to 0");
                 sc.ResetEncoderPosition(0);
-                
-  
 
                 Console.WriteLine("Moving...");
-                sc.MoveToAbsolutePosition(20000);
-                Console.WriteLine("Move complete.");
+
                 System.Threading.Thread.Sleep(2000);
-                sc.StartJog(10, 25, 25);
+                sc.StartJog(5, 25, 25);
                 System.Threading.Thread.Sleep(2500);
                 sc.ChangeJogSpeed(2.5);
                 System.Threading.Thread.Sleep(2500);
                 sc.ChangeJogSpeed(.5);
                 System.Threading.Thread.Sleep(2500);
                 sc.StopJog();
+                Console.WriteLine("Move complete.");
 
                 //Console.WriteLine("Status: " + sc.GetStatus());
                 System.Threading.Thread.Sleep(1000);
