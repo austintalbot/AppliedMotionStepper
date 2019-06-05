@@ -27,29 +27,31 @@ namespace AppliedMotion.Stepper.TestConsole
                 //    }
                 //});
 
-                Console.WriteLine("Model: " + sc.GetModel());
-                Console.WriteLine("Status: " + sc.GetStatus());
+                sc.GetModel();
+                Console.WriteLine($"Model: {sc.Sm.Model}");
+                sc.GetStatus();
+                Console.WriteLine($"Status: {sc.Sm.MotorStatus}");
                 sc.DisableMotor();
-                //System.Threading.Thread.Sleep(2000);
-                //Console.WriteLine("Current Position: " + sc.GetEncoderPosition());
-                //Console.WriteLine("Resetting position to 0");
-                //sc.ResetEncoderPosition(0);
-                //Console.WriteLine("Current Position: " + sc.GetEncoderPosition());
-                //sc.EnableMotor();
-                //Console.WriteLine("Moving...");
-                //sc.MoveToAbsolutePosition(20000);
-                //Console.WriteLine("Move complete.");
-                //System.Threading.Thread.Sleep(2000);
-                //sc.StartJog(10, 25, 25);
-                //System.Threading.Thread.Sleep(2500);
-                //sc.ChangeJogSpeed(25);
-                //System.Threading.Thread.Sleep(2500);
-                //sc.ChangeJogSpeed(3);
-                //System.Threading.Thread.Sleep(2500);
-                //sc.StopJog();
+                System.Threading.Thread.Sleep(2000);
+                //Console.WriteLine($@"Current Position: " + sc.GetEncoderPosition());
+                Console.WriteLine("Resetting position to 0");
+                sc.ResetEncoderPosition(0);
+                //Console.WriteLine($"Current Position: " + sc.GetEncoderPosition());
+                sc.EnableMotor();
+                Console.WriteLine("Moving...");
+                sc.MoveToAbsolutePosition(20000);
+                Console.WriteLine("Move complete.");
+                System.Threading.Thread.Sleep(2000);
+                sc.StartJog(1, 25, 25);
+                System.Threading.Thread.Sleep(2500);
+                sc.ChangeJogSpeed(2.5);
+                System.Threading.Thread.Sleep(2500);
+                sc.ChangeJogSpeed(.5);
+                System.Threading.Thread.Sleep(2500);
+                sc.StopJog();
 
                 //Console.WriteLine("Status: " + sc.GetStatus());
-                //System.Threading.Thread.Sleep(1000);
+                System.Threading.Thread.Sleep(1000);
                 //Console.WriteLine("Current Position: " + sc.GetEncoderPosition());
 
                 // stop the drive from moving
@@ -61,8 +63,13 @@ namespace AppliedMotion.Stepper.TestConsole
                 // set revolutions per second
                 sc.SetVelocity(25);
 
-                Console.WriteLine($"Model: {sc.GetModel()}");
-                Console.WriteLine($"Status: {sc.GetStatus()} Position: {sc.GetEncoderPosition()} ");
+                sc.GetModel();
+                Console.WriteLine($"Model: {sc.Sm.Model}");
+
+                sc.GetStatus();
+                sc.GetEncoderPosition();
+                Console.WriteLine($"Status: {sc.Sm.MotorStatus} ");
+                Console.WriteLine($"Position: {sc.Sm.EncoderPosition}");
 
                 Console.WriteLine("Resetting position to 0");
                 sc.ResetEncoderPosition(0);
@@ -83,7 +90,8 @@ namespace AppliedMotion.Stepper.TestConsole
                         sc.EnableMotor();
                         var position = (long)Convert.ToDouble(Console.ReadLine());
                         sc.MoveToAbsolutePosition(position);
-                        Console.WriteLine($"Current Position: {sc.GetEncoderPosition()}");
+                        sc.GetEncoderPosition();
+                        Console.WriteLine($"Current Position: {sc.Sm.EncoderPosition})");
                     }
                     catch (Exception e)
                     {

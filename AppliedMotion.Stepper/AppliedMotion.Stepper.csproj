@@ -45,6 +45,7 @@
     <Compile Include="MotorStatus.cs" />
     <Compile Include="StepperController.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="StepperMotor.cs" />
     <Compile Include="Utility\Reflection.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
