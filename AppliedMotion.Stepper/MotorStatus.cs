@@ -4,6 +4,8 @@ namespace AppliedMotion.Stepper
 {
     public class MotorStatus
     {
+        #region Constructors
+
         internal MotorStatus(BitArray bitStatus)
         {
             MotorEnabled = bitStatus[0];
@@ -24,26 +26,36 @@ namespace AppliedMotion.Stepper
             Initializing = bitStatus[15];
         }
 
-        public bool MotorEnabled { get; set; }
-        public bool Sampling { get; set; }
+        #endregion Constructors
+
+        #region Properties
+
+        public bool Alarm { get; set; }
+        public bool CheckingEncoder { get; set; }
         public bool DriveFault { get; set; }
+        public bool Homing { get; set; }
+        public bool Initializing { get; set; }
         public bool InPosition { get; set; }
-        public bool Moving { get; set; }
         public bool Jogging { get; set; }
+        public bool MotorEnabled { get; set; }
+        public bool Moving { get; set; }
+        public bool QProgramRunning { get; set; }
+        public bool Sampling { get; set; }
+        public bool Saving { get; set; }
         public bool Stopping { get; set; }
         public bool Waiting { get; set; }
-        public bool Saving { get; set; }
-        public bool Alarm { get; set; }
-        public bool Homing { get; set; }
         public bool WaitOnTimer { get; set; }
         public bool WizardRunning { get; set; }
-        public bool CheckingEncoder { get; set; }
-        public bool QProgramRunning { get; set; }
-        public bool Initializing { get; set; }
+
+        #endregion Properties
+
+        #region Methods
 
         public override string ToString()
         {
             return string.Join(", ", Utility.Reflection.ReflectTrueBoolPropertiesToList<MotorStatus>(this));
         }
+
+        #endregion Methods
     }
 }

@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Threading;
 
 namespace AppliedMotion.Stepper.TestConsole
 {
     internal class Program
     {
+        #region Methods
+
         private static void Main(string[] args)
         {
             StepperController sc = new StepperController("10.10.10.10");
@@ -11,38 +14,27 @@ namespace AppliedMotion.Stepper.TestConsole
             {
                 // stop the drive from moving
                 sc.Stop();
-                //for (int i = 0; i < 10; i++)
-                //{
-                //    SendScript(sc);
-                //    System.Threading.Thread.Sleep(2000);
-                //}
-
-                //System.Threading.ThreadPool.QueueUserWorkItem((obj) =>
-                //{
-                //    while (true)
-                //    {
-                //        Console.WriteLine("Status: " + sc.GetStatus());
-                //        Console.WriteLine("Alarm: " + sc.GetAlarmCode());
-                //        System.Threading.Thread.Sleep(1000);
-                //    }
-                //});
-
+                sc.EnableMotor();
+                sc.ClearAlarms();
                 sc.GetModel();
-                Console.WriteLine($"Model: {sc.Sm.Model}");
                 sc.GetStatus();
+
+                Thread.Sleep(500);
+                Console.WriteLine($"Model: {sc.Sm.Model}");
                 Console.WriteLine($"Status: {sc.Sm.MotorStatus}");
-                sc.DisableMotor();
+               
                 System.Threading.Thread.Sleep(2000);
-                //Console.WriteLine($@"Current Position: " + sc.GetEncoderPosition());
+
                 Console.WriteLine("Resetting position to 0");
                 sc.ResetEncoderPosition(0);
-                //Console.WriteLine($"Current Position: " + sc.GetEncoderPosition());
-                sc.EnableMotor();
+                
+  
+
                 Console.WriteLine("Moving...");
                 sc.MoveToAbsolutePosition(20000);
                 Console.WriteLine("Move complete.");
                 System.Threading.Thread.Sleep(2000);
-                sc.StartJog(1, 25, 25);
+                sc.StartJog(10, 25, 25);
                 System.Threading.Thread.Sleep(2500);
                 sc.ChangeJogSpeed(2.5);
                 System.Threading.Thread.Sleep(2500);
@@ -56,6 +48,8 @@ namespace AppliedMotion.Stepper.TestConsole
 
                 // stop the drive from moving
                 sc.Stop();
+                sc.ClearAlarms();
+                sc.startListening();
 
                 // set the number of steps per rev
                 sc.SetNumberStepsPerRevolution(51200);
@@ -88,7 +82,7 @@ namespace AppliedMotion.Stepper.TestConsole
                     {
                         Console.WriteLine($"Enter a position #{i} of {maxPositions}");
                         sc.EnableMotor();
-                        var position = (long)Convert.ToDouble(Console.ReadLine());
+                        long position = (long)Convert.ToDouble(Console.ReadLine());
                         sc.MoveToAbsolutePosition(position);
                         sc.GetEncoderPosition();
                         Console.WriteLine($"Current Position: {sc.Sm.EncoderPosition})");
@@ -109,5 +103,7 @@ namespace AppliedMotion.Stepper.TestConsole
                 sc.DisableMotor();
             }
         }
+
+        #endregion Methods
     }
 }

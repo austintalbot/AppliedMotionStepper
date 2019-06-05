@@ -1,181 +1,162 @@
 ﻿using System;
+using System.Collections;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace AppliedMotion.Stepper
 {
-    public class StepperController : IDisposable
+    public partial class StepperController : IDisposable
     {
-        public static bool messageReceived = false;
+        #region Fields
+
+        public static bool MessageReceived = false;
         public int MaxStepsPerRev = 51200;
         public int MinStepsPerRev = 200;
         public StepperMotor Sm = new StepperMotor();
-        internal static int listenPort = 7775;
-        private UdpClient _udpClient;
+        internal static int ListenPort = 7775;
+        private const int SendPort = 7777;
+        private readonly UdpClient _udpClient;
         private bool _waitingForResponse = false;
-        private int sendPort = 7777;
+
+        #endregion Fields
+
+        #region Constructors
 
         public StepperController(string ipAddress)
         {
-            Sm.IP = IPAddress.Parse(ipAddress);
-            _udpClient = new UdpClient(sendPort);
+            IPAddress.TryParse(ipAddress, out IPAddress Ip);
+            Sm.Ip = Ip;
+            _udpClient = new UdpClient(SendPort);
             _udpClient.AllowNatTraversal(true);
             //_udpClient.ExclusiveAddressUse = false;
-            _udpClient.Connect(Sm.IP, listenPort);
+            _udpClient.Connect(Sm.Ip, ListenPort);
 
-            ThreadPool.QueueUserWorkItem(delegate { ReceiveMessages(); }, null);
+            
         }
 
-        public static void ReceiveCallback(IAsyncResult ar)
+        public void startListening()
         {
-            UdpClient u = ((UdpState)(ar.AsyncState)).udpState;
-            IPEndPoint e = ((UdpState)(ar.AsyncState)).IpEndPoint;
-
-            byte[] receiveBytes = u.EndReceive(ar, ref e);
-            string receiveString = Encoding.ASCII.GetString(receiveBytes);
-
-            Console.WriteLine($"Received: {receiveString}");
-            messageReceived = true;
-        }
-
-        public static void ReceiveMessages()
-        {
-            // Receive a message and write it to the console.
-            IPEndPoint endPoint = new IPEndPoint(IPAddress.Any, listenPort);
-            UdpClient udpState = new UdpClient(endPoint);
-
-            UdpState state = new UdpState();
-            state.IpEndPoint = endPoint;
-            state.udpState = udpState;
-
-            Console.WriteLine("listening for messages");
-            udpState.BeginReceive(new AsyncCallback(ReceiveCallback), state);
-
-            // Do some work while we wait for a message. For this example, we'll just sleep
-            while (!messageReceived)
+            try
             {
-                Thread.Sleep(100);
+                Task.Run(() => _udpClient.BeginReceive(new AsyncCallback(ReceiveCallBack), null));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
             }
         }
+
+        #endregion Constructors
+
+        #region Methods
 
         public void Dispose()
         {
-            this.Sm.Dispose();
+            Sm.Dispose();
             _udpClient.Close();
             _udpClient?.Dispose();
         }
-#region commands
 
-        public void ChangeJogSpeed(double speed)
+        private string GetResponse()
         {
-            SendSclCommand($"CS{System.Math.Round(speed, 2)}");
-        }
-
-        public void DisableMotor()
-        {
-            SendSclCommand("MD");
-        }
-
-        public void EnableMotor()
-        {
-            SendSclCommand("ME");
-        }
-
-        public void GetAlarmCode()
-        {
-            SendSclCommand("AL");
-        }
-
-        public void GetEncoderCounts()
-        {
-            SendSclCommand("IFD");
-        }
-
-        public void GetEncoderPosition()
-        {
-            SendSclCommand("SP");
-        }
-
-        public void GetModel()
-        {
-            SendSclCommand("MV");
-        }
-
-        public void GetStatus()
-        {
-            SendSclCommand("SC");
-        }
-
-        public void MoveRelativeSteps(long steps)
-        {
-            SendSclCommand($"DI{steps}");
-            SendSclCommand($"FL");
-            WaitForStop();
-        }
-
-        public void MoveToAbsolutePosition(long position)
-        {
-            SendSclCommand($"DI{position}");
-            SendSclCommand($"FP");
-            WaitForStop();
-        }
-
-        public void ResetEncoderPosition(long newValue)
-        {
-            SendSclCommand($"EP{newValue}");
-            SendSclCommand($"SP{newValue}");
-        }
-
-        public void SetNumberStepsPerRevolution(int numberSteps)
-        {
-            // ensure that number is divisible by two
-            Math.DivRem(numberSteps, 2, out int EvenNumberSteps);
-            EvenNumberSteps = numberSteps + EvenNumberSteps;
-            if (EvenNumberSteps <= MaxStepsPerRev && EvenNumberSteps >= MinStepsPerRev)
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            while (sw.ElapsedMilliseconds < 1000)
             {
-                SendSclCommand($"EG{EvenNumberSteps}");
-                this.Sm.StepsPerRev = numberSteps;
+                if (_udpClient.Available > 0)
+                {
+                    break;
+                }
             }
-            else if (EvenNumberSteps >= MaxStepsPerRev)
+
+            if (_udpClient.Available == 0)
             {
-                SendSclCommand($"EG{MaxStepsPerRev}");
-                this.Sm.StepsPerRev = MaxStepsPerRev;
+                _waitingForResponse = false;
+                return null;
             }
-            else if (EvenNumberSteps <= MinStepsPerRev)
+
+            IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, ListenPort);
+            byte[] receiveBytes = _udpClient.Receive(ref remoteIpEndPoint);
+            _waitingForResponse = false;
+            byte[] sclString = new byte[receiveBytes.Length - 2];
+
+            for (int i = 0; i < sclString.Length; i++)
             {
-                SendSclCommand($"EG{MinStepsPerRev}");
-                this.Sm.StepsPerRev = MinStepsPerRev;
+                sclString[i] = receiveBytes[i + 2];
+            }
+
+            return Encoding.ASCII.GetString(sclString);
+        }
+
+        //CallBack
+        private void ReceiveCallBack(IAsyncResult res)
+        {
+
+            const string motorStatusResponse = "SC=";
+            const string alarmResponse = "AL=";
+            const string positionResponse = "SP=";
+            const string encoderCountsResponse = "IE=";
+            const string modelResponse = "MV";
+
+            try
+            {
+
+                IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, ListenPort);
+                byte[] received = _udpClient.EndReceive(res, ref remoteIpEndPoint);
+
+                //Process codes
+                string response = Encoding.UTF8.GetString(received);
+                if (response.Contains(encoderCountsResponse)) // returned encoder position
+                {
+                    int first = response.IndexOf(encoderCountsResponse) + encoderCountsResponse.Length;
+                    int last = response.LastIndexOf("\r");
+                    string ExtractedString = response.Substring(first, last - first);
+
+                    double encoderCounts = double.Parse(ExtractedString);
+                    Sm.encoderCounts = encoderCounts;
+                }
+                else if (response.Contains(alarmResponse)) // returned alarm code
+                {
+                    int first = response.IndexOf(alarmResponse) + alarmResponse.Length;
+                    int last = response.LastIndexOf("\r");
+                    string ExtractedString = response.Substring(first, last - first);
+                    int responseCode = Convert.ToInt32(ExtractedString);
+                    BitArray bA = new BitArray(System.BitConverter.GetBytes(responseCode));
+                    Sm.AlarmCode = new Stepper.AlarmCode(bA);
+                }
+                else if (response.Contains(positionResponse))
+                {
+                    int first = response.IndexOf(positionResponse) + positionResponse.Length;
+                    int last = response.LastIndexOf("\r");
+                    string ExtractedString = response.Substring(first, last - first);
+                    long encoderPosition = long.Parse(ExtractedString);
+                    Sm.EncoderPosition = encoderPosition;
+                }
+                else if (response.Contains(motorStatusResponse))
+                {
+                    int first = response.IndexOf(motorStatusResponse) + motorStatusResponse.Length;
+                    int last = response.LastIndexOf("\r");
+                    string ExtractedString = response.Substring(first, last - first);
+                    int responseCode = Convert.ToInt32(ExtractedString);
+                    BitArray bA = new BitArray(System.BitConverter.GetBytes(responseCode));
+                    Sm.MotorStatus = new Stepper.MotorStatus(bA);
+                }
+                else
+                {
+                    Debug.Print(response);
+                }
+
+                _udpClient.BeginReceive(new AsyncCallback(ReceiveCallBack), null);
+            }
+            catch (Exception e)
+            {
+                Debug.Print(e.Message);
             }
         }
-
-        public void SetVelocity(double revsPerSec)
-        {
-            SendSclCommand($"VE{System.Math.Round(revsPerSec, 3)}");
-        }
-
-        public void StartJog(double speed, double acceleration, double deceleration)
-        {
-            SendSclCommand($"JS{Math.Round(speed, 2)}");
-            SendSclCommand($"JA{Math.Round(acceleration, 2)}");
-            SendSclCommand($"JL{Math.Round(deceleration, 2)}");
-            SendSclCommand("JM1");
-            SendSclCommand("CJ");
-        }
-
-        public void Stop()
-        {
-            SendSclCommand("ST");
-        }
-
-        public void StopJog()
-        {
-            SendSclCommand("SJ");
-        }
-
-#endregion commands
 
         public string SendSclCommandAndGetResponse(string command)
         {
@@ -198,63 +179,18 @@ namespace AppliedMotion.Stepper
             sw.Start();
             while (sw.Elapsed < timeout)
             {
-                var responseText = GetResponse();
+                string responseText = GetResponse();
                 if (!string.IsNullOrWhiteSpace(responseText))
                 {
                     Debug.Print($"RX: {responseText} @ {DateTime.Now.ToString("hh:mm:ss")}");
                     return responseText.Trim();
                 }
+
                 System.Threading.Thread.Sleep(10);
             }
 
             return null;
         }
-
-        internal void WaitForStop()
-        {
-            try
-            {
-                this.GetStatus();
-                while (Sm.MotorStatus.Moving.ToString() != "False")
-                {
-                    this.GetStatus();
-                    this.GetAlarmCode();
-                    System.Threading.Thread.Sleep(00);
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-                Debug.Print(e.Message);
-            }
-        }
-
-        private string GetResponse()
-        {
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
-            while (sw.ElapsedMilliseconds < 1000)
-            {
-                if (_udpClient.Available > 0) { break; }
-            }
-            if (_udpClient.Available == 0)
-            {
-                _waitingForResponse = false;
-                return null;
-            }
-
-            IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, listenPort);
-            byte[] receiveBytes = _udpClient.Receive(ref remoteIpEndPoint);
-            _waitingForResponse = false;
-            byte[] sclString = new byte[receiveBytes.Length - 2];
-
-            for (int i = 0; i < sclString.Length; i++)
-            {
-                sclString[i] = receiveBytes[i + 2];
-            }
-            return Encoding.ASCII.GetString(sclString);
-        }
-
         private void SendSclCommand(string command)
         {
             byte[] sclString = Encoding.ASCII.GetBytes(command);
@@ -264,13 +200,9 @@ namespace AppliedMotion.Stepper
             Array.Copy(sclString, 0, sendBytes, 2, sclString.Length);
             sendBytes[sendBytes.Length - 1] = 13;
             _udpClient.Send(sendBytes, sendBytes.Length);
-            Debug.Print($"TX: {command}");
+            Debug.Print($"TX: {command} @ {DateTime.Now}");
         }
 
-        public struct UdpState
-        {
-            public IPEndPoint IpEndPoint;
-            public UdpClient udpState;
-        }
+        #endregion Methods
     }
 }

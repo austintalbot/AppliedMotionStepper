@@ -4,7 +4,9 @@ namespace AppliedMotion.Stepper
 {
     public class AlarmCode
     {
-        internal AlarmCode(BitArray bitStatus)
+        #region Constructors
+
+        public AlarmCode(BitArray bitStatus)
         {
             PositionLimit = bitStatus[0];
             CcwLimit = bitStatus[1];
@@ -24,41 +26,36 @@ namespace AppliedMotion.Stepper
             NoMove = bitStatus[15];
         }
 
-        public bool NoMove { get; set; }
+        #endregion Constructors
 
-        public bool BlankQSegment { get; set; }
-
-        public bool CurrentFoldbackMotorResistance { get; set; }
-
-        public bool WizardFailedNoMove { get; set; }
-
-        public bool BadFlash { get; set; }
-
-        public bool CommError { get; set; }
+        #region Properties
 
         public bool BadEncoder { get; set; }
-
+        public bool BadFlash { get; set; }
         public bool BadHallSensorOpenMotorWinding { get; set; }
-
-        public bool OverCurrent { get; set; }
-
-        public bool UnderVoltage { get; set; }
-
-        public bool OverVoltage { get; set; }
-
-        public bool ExcessRegenInternalVoltage { get; set; }
-
-        public bool OverTemperature { get; set; }
-
-        public bool CwLimit { get; set; }
-
+        public bool BlankQSegment { get; set; }
         public bool CcwLimit { get; set; }
-
+        public bool CommError { get; set; }
+        public bool CurrentFoldbackMotorResistance { get; set; }
+        public bool CwLimit { get; set; }
+        public bool ExcessRegenInternalVoltage { get; set; }
+        public bool NoMove { get; set; }
+        public bool OverCurrent { get; set; }
+        public bool OverTemperature { get; set; }
+        public bool OverVoltage { get; set; }
         public bool PositionLimit { get; set; }
+        public bool UnderVoltage { get; set; }
+        public bool WizardFailedNoMove { get; set; }
+
+        #endregion Properties
+
+        #region Methods
 
         public override string ToString()
         {
             return string.Join(", ", Utility.Reflection.ReflectTrueBoolPropertiesToList<AlarmCode>(this));
         }
+
+        #endregion Methods
     }
 }
