@@ -58,7 +58,6 @@ namespace AppliedMotion.Stepper
             // over position is not limited by software limit and matches the encoder position
             Assert.AreEqual(calculatedPosition, sc.Sm.EncoderPosition);
             sc.Dispose();
-
         }
 
         [TestMethod]
