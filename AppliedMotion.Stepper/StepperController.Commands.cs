@@ -1,12 +1,36 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Security.Policy;
 using System.Threading;
+using PostSharp.Patterns.Model;
 
 namespace AppliedMotion.Stepper
 {
+    [NotifyPropertyChanged]
     public partial class StepperController
     {
         #region Methods
+
+        public void SetCCWLimit(double counts)
+        {
+            SendSclCommandAndGetResponse($"LM{counts}");
+        }
+
+        public void ClearCCWLimit()
+        {
+            SendSclCommandAndGetResponse($"LM0");
+        }
+
+        public void SetCWLimit(double counts)
+        {
+            SendSclCommandAndGetResponse($"LP{counts}");
+        }
+
+        public void ClearCWLimit()
+        {
+            SendSclCommandAndGetResponse($"LP0");
+        }
+
 
         public void ChangeJogSpeed(double speed)
         {

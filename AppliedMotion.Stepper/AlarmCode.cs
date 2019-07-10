@@ -1,7 +1,9 @@
 ﻿using System.Collections;
+using PostSharp.Patterns.Model;
 
 namespace AppliedMotion.Stepper
 {
+    [NotifyPropertyChanged]
     public class AlarmCode
     {
         #region Constructors
