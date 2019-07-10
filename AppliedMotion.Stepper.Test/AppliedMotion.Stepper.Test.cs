@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using System;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections;
 using System.Diagnostics;
 using System.Threading;
@@ -17,12 +18,14 @@ namespace AppliedMotion.Stepper
         #region Methods
 
         [TestMethod]
-        public void testCCWLimit()
+        public void TestCcwLimit()
         {
+            Random random = new Random();
             double revsPerSecond = 2;
             StepperController sc = new StepperController(IP);
             sc.startListening();
-            double CcwLimitCounts = 51200 * 3;
+            double numberTurns = random.NextDouble() * 2.5;
+            double CcwLimitCounts = Math.Floor(sc.MaxStepsPerRev * numberTurns);
             sc.SetCCWLimit(CcwLimitCounts);
 
 
@@ -31,8 +34,8 @@ namespace AppliedMotion.Stepper
             sc.ResetEncoderPosition(0);
             sc.EnableMotor();
             sc.SetNumberStepsPerRevolution(sc.MaxStepsPerRev);
-
-            double calculatedPosition = sc.MaxStepsPerRev * 3.5;
+            // move to number of turns + ten percent
+            double calculatedPosition = Math.Floor(CcwLimitCounts * 1.1);
             sc.MoveToAbsolutePosition((long)calculatedPosition);
 
             Thread.Sleep(2500);
@@ -45,16 +48,17 @@ namespace AppliedMotion.Stepper
             Assert.AreNotEqual(calculatedPosition, sc.Sm.EncoderPosition);
             Assert.AreEqual(CcwLimitCounts, sc.Sm.EncoderPosition);
             sc.Dispose();
-
         }
 
         [TestMethod]
-        public void testCWLimit()
+        public void TestCwLimit()
         {
+            Random random = new Random();
             double revsPerSecond = 2;
             StepperController sc = new StepperController(IP);
             sc.startListening();
-            double CwLimitCounts = 51200 * 3;
+            double numberTurns = random.NextDouble()* 2.5;
+            double CwLimitCounts = Math.Floor(sc.MaxStepsPerRev * numberTurns);
             sc.SetCWLimit(CwLimitCounts);
 
 
@@ -63,8 +67,8 @@ namespace AppliedMotion.Stepper
             sc.ResetEncoderPosition(0);
             sc.EnableMotor();
             sc.SetNumberStepsPerRevolution(sc.MaxStepsPerRev);
-
-            double calculatedPosition = -1* (sc.MaxStepsPerRev * 3.5);
+            // move to number of turns + ten percent
+            double calculatedPosition = Math.Floor(-1* (CwLimitCounts * 1.1));
             sc.MoveToAbsolutePosition((long)calculatedPosition);
 
             Thread.Sleep(2500);
