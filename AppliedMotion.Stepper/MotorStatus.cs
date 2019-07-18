@@ -1,5 +1,5 @@
-﻿using System.Collections;
-using PostSharp.Patterns.Model;
+﻿using PostSharp.Patterns.Model;
+using System.Collections;
 
 namespace AppliedMotion.Stepper
 {
@@ -33,20 +33,35 @@ namespace AppliedMotion.Stepper
         #region Properties
 
         public bool Alarm { get; set; }
+
         public bool CheckingEncoder { get; set; }
+
         public bool DriveFault { get; set; }
+
         public bool Homing { get; set; }
+
         public bool Initializing { get; set; }
+
         public bool InPosition { get; set; }
+
         public bool Jogging { get; set; }
+
         public bool MotorEnabled { get; set; }
+
         public bool Moving { get; set; }
+
         public bool QProgramRunning { get; set; }
+
         public bool Sampling { get; set; }
+
         public bool Saving { get; set; }
+
         public bool Stopping { get; set; }
+
         public bool Waiting { get; set; }
+
         public bool WaitOnTimer { get; set; }
+
         public bool WizardRunning { get; set; }
 
         #endregion Properties
@@ -55,7 +70,7 @@ namespace AppliedMotion.Stepper
 
         public override string ToString()
         {
-            return string.Join(", ", Utility.Reflection.ReflectTrueBoolPropertiesToList<MotorStatus>(this));
+            return string.Join(", ", Utility.Reflection.ReflectTrueBoolPropertiesToList(this));
         }
 
         #endregion Methods

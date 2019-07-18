@@ -1,10 +1,10 @@
-﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections;
 using System.Diagnostics;
 using System.Threading;
 
-namespace AppliedMotion.Stepper
+namespace AppliedMotion.Stepper.Test
 {
     [TestClass]
     public class AppliedMotionStepperTest
@@ -18,104 +18,16 @@ namespace AppliedMotion.Stepper
         #region Methods
 
         [TestMethod]
-        public void TestCcwLimit()
-        {
-
-            Random random = new Random();
-            double revsPerSecond = 2;
-            StepperController sc = new StepperController(IP);
-            sc.startListening();
-            double numberTurns = random.NextDouble() * 2.5;
-            double CcwLimitCounts = Math.Floor(sc.MaxStepsPerRev * numberTurns);
-            sc.SetCCWLimit(CcwLimitCounts);
-
-
-            sc.SetVelocity(revsPerSecond);
-
-            sc.ResetEncoderPosition(0);
-            sc.EnableMotor();
-            sc.SetNumberStepsPerRevolution(sc.MaxStepsPerRev);
-            // move to number of turns + ten percent
-            double calculatedPosition = Math.Floor(CcwLimitCounts * 1.1);
-            sc.MoveToAbsolutePosition((long)calculatedPosition);
-
-            Thread.Sleep(2500);
-
-            sc.GetEncoderPosition();
-
-            Thread.Sleep(500);
-            Debug.Print($"Calculated ={calculatedPosition}");
-            Debug.Print($"Encoder Position = {sc.Sm.EncoderPosition}");
-            // over position is limited by software limit
-            Assert.AreNotEqual(calculatedPosition, sc.Sm.EncoderPosition);
-
-            // software limit and encoder position match 
-            Assert.AreEqual(CcwLimitCounts, sc.Sm.EncoderPosition);
-
-            // remove software limit
-            sc.ClearCWLimit();
-            sc.MoveToAbsolutePosition((long)calculatedPosition);
-            // over position is not limited by software limit and matches the encoder position
-            Assert.AreEqual(calculatedPosition, sc.Sm.EncoderPosition);
-            sc.Dispose();
-        }
-
-        [TestMethod]
-        public void TestCwLimit()
-        {
-            Random random = new Random();
-            double revsPerSecond = 2;
-            StepperController sc = new StepperController(IP);
-            sc.startListening();
-            double numberTurns = random.NextDouble()* 2.5;
-            double CwLimitCounts = Math.Floor(sc.MaxStepsPerRev * numberTurns);
-            sc.SetCWLimit(CwLimitCounts);
-
-
-            sc.SetVelocity(revsPerSecond);
-
-            sc.ResetEncoderPosition(0);
-            sc.EnableMotor();
-            sc.SetNumberStepsPerRevolution(sc.MaxStepsPerRev);
-            // move to number of turns + ten percent
-            double calculatedPosition = Math.Floor(-1* (CwLimitCounts * 1.1));
-            sc.MoveToAbsolutePosition((long)calculatedPosition);
-
-            Thread.Sleep(2500);
-
-            sc.GetEncoderPosition();
-
-            Thread.Sleep(500);
-            Debug.Print($"Calculated ={calculatedPosition}");
-            Debug.Print($"Encoder Position = {sc.Sm.EncoderPosition}");
-            // over position is limited by software limit
-            Assert.AreNotEqual(calculatedPosition, sc.Sm.EncoderPosition);
-
-            // software limit and encoder position match 
-            Assert.AreEqual(CwLimitCounts, sc.Sm.EncoderPosition);
-
-            // remove software limit
-            sc.ClearCWLimit();
-            sc.MoveToAbsolutePosition((long)calculatedPosition);
-            // over position is not limited by software limit and matches the encoder position
-            Assert.AreEqual(calculatedPosition, sc.Sm.EncoderPosition);
-            sc.Dispose();
-
-        }
-
-
-
-        [TestMethod]
         public void GetAlarmCodes()
         {
             StepperController sc = new StepperController(IP);
-            sc.startListening();
-            BitArray bA = new BitArray(System.BitConverter.GetBytes(0));
+            sc.StartListening();
+            BitArray bA = new BitArray(BitConverter.GetBytes(0));
             AlarmCode blankAlarmCode = new AlarmCode(bA);
 
             sc.GetAlarmCode();
             Thread.Sleep(500);
-            AlarmCode alarmCode = sc.Sm.AlarmCode;
+
             Assert.IsNotNull(sc.Sm.AlarmCode);
 
             sc.Sm.AlarmCode.CwLimit = true;
@@ -135,28 +47,33 @@ namespace AppliedMotion.Stepper
         {
             StepperController sc = new StepperController(IP);
             sc.EnableMotor();
+
             //sc.ResetEncoderPosition(0);
-            sc.startListening();
+
+            sc.SetFormatDecimal();
+            sc.StartListening();
             sc.GetEncoderCounts();
             sc.GetEncoderPosition();
             Thread.Sleep(100);
             Debug.Print($"Encoder position= {sc.Sm.EncoderPosition}");
-            Debug.Print($"Encoder counts= {sc.Sm.encoderCounts}");
-            double counts = sc.Sm.EncoderPosition;
+            Debug.Print($"Encoder counts= {sc.Sm.EncoderCounts}");
 
-            sc.StartJog(5,5,5);
+            sc.StartJog(5, 5, 5);
             Thread.Sleep(1000);
             sc.StopJog();
             sc.GetEncoderPosition();
             sc.GetEncoderCounts();
             Thread.Sleep(2000);
-            double newCounts = sc.Sm.encoderCounts;
+            double newCounts = sc.Sm.EncoderCounts;
             double newPosition = sc.Sm.EncoderPosition;
             Debug.Print($"Encoder position= {sc.Sm.EncoderPosition}");
-            Debug.Print($"Encoder counts= {sc.Sm.encoderCounts}");
+            Debug.Print($"Encoder counts= {sc.Sm.EncoderCounts}");
             Thread.Sleep(1000);
             Assert.AreEqual(sc.Sm.EncoderPosition, newPosition);
-            Assert.AreEqual(sc.Sm.encoderCounts, newCounts);
+            Assert.AreEqual(sc.Sm.EncoderCounts, newCounts);
+            Thread.Sleep(1000);
+            sc.StopListening();
+
             sc.Dispose();
         }
 
@@ -164,7 +81,7 @@ namespace AppliedMotion.Stepper
         public void MaxStepsPerRevCoerced()
         {
             StepperController sc = new StepperController(IP);
-            sc.startListening();
+            sc.StartListening();
             sc.SetNumberStepsPerRevolution(10000000);
             Assert.AreEqual(sc.MaxStepsPerRev, sc.Sm.StepsPerRev);
             sc.Dispose();
@@ -174,7 +91,7 @@ namespace AppliedMotion.Stepper
         public void MinStepsPerRevCoerced()
         {
             StepperController sc = new StepperController(IP);
-            sc.startListening();
+            sc.StartListening();
             sc.SetNumberStepsPerRevolution(1);
             Assert.AreEqual(sc.MinStepsPerRev, sc.Sm.StepsPerRev);
             sc.Dispose();
@@ -185,7 +102,8 @@ namespace AppliedMotion.Stepper
         {
             double revsPerSecond = 5;
             StepperController sc = new StepperController(IP);
-            sc.startListening();
+            sc.StartListening();
+            sc.SetFormatDecimal();
             sc.SetVelocity(revsPerSecond);
             sc.ResetEncoderPosition(0);
             sc.EnableMotor();
@@ -198,6 +116,7 @@ namespace AppliedMotion.Stepper
             Debug.Print($"Calculated ={calculatedPosition}");
             Debug.Print($"Encoder Position = {sc.Sm.EncoderPosition}");
             Assert.AreEqual(calculatedPosition, sc.Sm.EncoderPosition);
+            sc.StopListening();
             sc.Dispose();
         }
 
@@ -205,7 +124,7 @@ namespace AppliedMotion.Stepper
         public void SetStepsToAcceptableValue()
         {
             StepperController sc = new StepperController(IP);
-            sc.startListening();
+            sc.StartListening();
             int expectedStepsPerRev = 20000;
 
             sc.SetNumberStepsPerRevolution(expectedStepsPerRev);
@@ -230,6 +149,104 @@ namespace AppliedMotion.Stepper
             expectedStepsPerRev = 205;
             sc.SetNumberStepsPerRevolution(expectedStepsPerRev);
             Assert.AreEqual(expectedStepsPerRev, sc.Sm.StepsPerRev);
+            sc.Dispose();
+        }
+
+        [TestMethod]
+        public void TestCcwLimit()
+        {
+            Random random = new Random();
+            double revsPerSecond = 2;
+            StepperController sc = new StepperController(IP);
+            sc.StartListening();
+            sc.SetFormatDecimal();
+            sc.SetVelocity(5);
+            sc.ResetEncoderPosition(0);
+
+            double numberTurns = random.NextDouble() * 2.5;
+            double ccwLimitCounts = -1 * Math.Floor(sc.MaxStepsPerRev * numberTurns);
+            sc.SetCwLimit(ccwLimitCounts);
+
+            sc.SetVelocity(revsPerSecond);
+
+            sc.ResetEncoderPosition(0);
+            sc.EnableMotor();
+            sc.SetNumberStepsPerRevolution(sc.MaxStepsPerRev);
+
+            // move to number of turns + ten percent
+            double calculatedPosition = Math.Floor((ccwLimitCounts * 2));
+            sc.MoveToAbsolutePosition((long)calculatedPosition);
+
+            Thread.Sleep(2500);
+
+            sc.GetEncoderPosition();
+
+            Thread.Sleep(500);
+            Debug.Print($"Limit ={ccwLimitCounts}");
+            Debug.Print($"Calculated ={calculatedPosition}");
+            Debug.Print($"Encoder Position = {sc.Sm.EncoderPosition}");
+
+            // over position is limited by software limit
+            Assert.AreNotEqual(calculatedPosition, sc.Sm.EncoderPosition);
+
+            // software limit and encoder position match
+            Assert.AreEqual(ccwLimitCounts, sc.Sm.EncoderPosition);
+
+            // remove software limit
+            sc.ClearCwLimit();
+            sc.MoveToAbsolutePosition((long)calculatedPosition);
+
+            // over position is not limited by software limit and matches the encoder position
+            Assert.AreEqual(calculatedPosition, sc.Sm.EncoderPosition);
+            sc.Dispose();
+        }
+
+        [TestMethod]
+        public void TestCwLimit()
+        {
+            Random random = new Random();
+            double revsPerSecond = 2;
+            StepperController sc = new StepperController(IP);
+            sc.StartListening();
+            sc.SetFormatDecimal();
+            sc.SetVelocity(5);
+            sc.ResetEncoderPosition(0);
+
+            double numberTurns = random.NextDouble() * 2.5;
+            double cwLimitCounts = Math.Floor(sc.MaxStepsPerRev * numberTurns);
+            sc.SetCwLimit(cwLimitCounts);
+
+            sc.SetVelocity(revsPerSecond);
+
+            sc.ResetEncoderPosition(0);
+            sc.EnableMotor();
+            sc.SetNumberStepsPerRevolution(sc.MaxStepsPerRev);
+
+            // move to number of turns + ten percent
+            double calculatedPosition = Math.Floor((cwLimitCounts * 1.1));
+            sc.MoveToAbsolutePosition((long)calculatedPosition);
+
+            Thread.Sleep(2500);
+
+            sc.GetEncoderPosition();
+
+            Thread.Sleep(500);
+            Debug.Print($"Limit ={cwLimitCounts}");
+            Debug.Print($"Calculated ={calculatedPosition}");
+            Debug.Print($"Encoder Position = {sc.Sm.EncoderPosition}");
+
+            // over position is limited by software limit
+            Assert.AreNotEqual(calculatedPosition, sc.Sm.EncoderPosition);
+
+            // software limit and encoder position match
+            Assert.AreEqual(cwLimitCounts, sc.Sm.EncoderPosition);
+
+            // remove software limit
+            sc.ClearCwLimit();
+            sc.MoveToAbsolutePosition((long)calculatedPosition);
+
+            // over position is not limited by software limit and matches the encoder position
+            Assert.AreEqual(calculatedPosition, sc.Sm.EncoderPosition);
             sc.Dispose();
         }
 

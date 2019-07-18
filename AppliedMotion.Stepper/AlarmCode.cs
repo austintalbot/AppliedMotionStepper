@@ -1,5 +1,5 @@
-﻿using System.Collections;
-using PostSharp.Patterns.Model;
+﻿using PostSharp.Patterns.Model;
+using System.Collections;
 
 namespace AppliedMotion.Stepper
 {
@@ -33,20 +33,35 @@ namespace AppliedMotion.Stepper
         #region Properties
 
         public bool BadEncoder { get; set; }
+
         public bool BadFlash { get; set; }
+
         public bool BadHallSensorOpenMotorWinding { get; set; }
+
         public bool BlankQSegment { get; set; }
+
         public bool CcwLimit { get; set; }
+
         public bool CommError { get; set; }
+
         public bool CurrentFoldbackMotorResistance { get; set; }
+
         public bool CwLimit { get; set; }
+
         public bool ExcessRegenInternalVoltage { get; set; }
+
         public bool NoMove { get; set; }
+
         public bool OverCurrent { get; set; }
+
         public bool OverTemperature { get; set; }
+
         public bool OverVoltage { get; set; }
+
         public bool PositionLimit { get; set; }
+
         public bool UnderVoltage { get; set; }
+
         public bool WizardFailedNoMove { get; set; }
 
         #endregion Properties

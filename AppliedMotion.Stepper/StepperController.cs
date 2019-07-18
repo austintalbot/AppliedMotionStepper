@@ -1,4 +1,6 @@
-﻿using System;
+﻿using log4net;
+using PostSharp.Patterns.Model;
+using System;
 using System.Collections;
 using System.Diagnostics;
 using System.Net;
@@ -6,7 +8,6 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using PostSharp.Patterns.Model;
 
 namespace AppliedMotion.Stepper
 {
@@ -15,14 +16,27 @@ namespace AppliedMotion.Stepper
     {
         #region Fields
 
+        public static readonly ILog Log = LogManager.GetLogger(typeof(StepperController));
+
         public static bool MessageReceived = false;
+
         public int MaxStepsPerRev = 51200;
+
         public int MinStepsPerRev = 200;
+
         public StepperMotor Sm = new StepperMotor();
+
         internal static int ListenPort = 7775;
+
         private const int SendPort = 7777;
+
+        private readonly CancellationTokenSource _source;
+
         private readonly UdpClient _udpClient;
-        private bool _waitingForResponse = false;
+
+        private CancellationToken _cancellationToken;
+
+        private bool _waitingForResponse;
 
         #endregion Fields
 
@@ -30,10 +44,13 @@ namespace AppliedMotion.Stepper
 
         public StepperController(string ipAddress)
         {
-            IPAddress.TryParse(ipAddress, out IPAddress Ip);
-            Sm.Ip = Ip;
+            _source = new CancellationTokenSource();
+            _cancellationToken = _source.Token;
+            IPAddress.TryParse(ipAddress, out IPAddress ip);
+            Sm.Ip = ip;
             _udpClient = new UdpClient(SendPort);
             _udpClient.AllowNatTraversal(true);
+
             //_udpClient.ExclusiveAddressUse = false;
             _udpClient.Connect(Sm.Ip, ListenPort);
         }
@@ -44,18 +61,21 @@ namespace AppliedMotion.Stepper
 
         public void Dispose()
         {
-            Sm.Dispose();
+            Log.Info("stepper controller being disposed");
             _udpClient.Close();
-            _udpClient?.Dispose();
+
+            //_udpClient?.Dispose();
         }
 
         public string SendSclCommandAndGetResponse(string command)
         {
+            Log.Info($"command sent: {command}");
             return SendSclCommandAndGetResponse(command, TimeSpan.FromSeconds(1));
         }
 
         public string SendSclCommandAndGetResponse(string command, TimeSpan timeout)
         {
+            Log.Info($"command sent: {command} with timeout: {timeout}");
             int responseTimeout = 5000;
             Stopwatch swConflictTimeout = new Stopwatch();
             swConflictTimeout.Start();
@@ -74,25 +94,34 @@ namespace AppliedMotion.Stepper
                 if (!string.IsNullOrWhiteSpace(responseText))
                 {
                     Debug.Print($"RX: {responseText} @ {DateTime.Now:hh:mm:ss}");
+                    Log.Info($"RX: {responseText} @ {DateTime.Now:hh:mm:ss}");
                     return responseText.Trim();
                 }
 
-                System.Threading.Thread.Sleep(10);
+                Thread.Sleep(10);
             }
 
             return null;
         }
 
-        public void startListening()
+        public void StartListening()
         {
+            Log.Info($"listening for UDP responses");
             try
             {
-                Task.Run(() => _udpClient.BeginReceive(new AsyncCallback(ReceiveCallBack), null));
+                Task.Run(() => _udpClient.BeginReceive(ReceiveCallBack, null), _source.Token);
             }
             catch (Exception e)
             {
+                Log.Error(e.ToString());
                 Console.WriteLine(e.ToString());
             }
+        }
+
+        public void StopListening()
+        {
+            Log.Info($"Stopped Listening");
+            _source.Cancel();
         }
 
         private string GetResponse()
@@ -116,14 +145,15 @@ namespace AppliedMotion.Stepper
             IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, ListenPort);
             byte[] receiveBytes = _udpClient.Receive(ref remoteIpEndPoint);
             _waitingForResponse = false;
-            byte[] sclString = new byte[receiveBytes.Length - 2];
 
-            for (int i = 0; i < sclString.Length; i++)
-            {
-                sclString[i] = receiveBytes[i + 2];
-            }
+            //create a byte array that is two bytes shorter
 
-            return Encoding.ASCII.GetString(sclString);
+            byte[] sclArraycopy = new byte[receiveBytes.Length - 2];
+            Array.Copy(receiveBytes, 2, sclArraycopy, 0, receiveBytes.Length - 2);
+
+            string results = Encoding.ASCII.GetString(sclArraycopy);
+            Log.Info($"get Response result: {results }");
+            return results;
         }
 
         //CallBack
@@ -135,67 +165,109 @@ namespace AppliedMotion.Stepper
             const string encoderCountsResponse = "IE=";
             const string encoderPositionResponse = "EP=";
             const string modelResponse = "MV";
-
+            bool defaultReceived = false;
+            byte[] received;
             try
             {
                 IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, ListenPort);
-                byte[] received = _udpClient.EndReceive(res, ref remoteIpEndPoint);
+                try
+                {
+                    received = _udpClient.EndReceive(res, ref remoteIpEndPoint);
 
-                //Process codes
-                string response = Encoding.UTF8.GetString(received);
-                if (response.Contains(encoderCountsResponse)) // returned encoder position
-                {
-                    int first = response.IndexOf(encoderCountsResponse) + encoderCountsResponse.Length;
-                    int last = response.LastIndexOf("\r");
-                    string ExtractedString = response.Substring(first, last - first);
+                    if (received.Length == 4 && received[0] == 0 && received[1] == 7 && received[2] == 37 && received[3] == 13)
+                    {
+                        defaultReceived = true;
+                    }
 
-                    double encoderCounts = double.Parse(ExtractedString);
-                    Sm.encoderCounts = encoderCounts;
-                }
-                else if (response.Contains(alarmResponse)) // returned alarm code
-                {
-                    int first = response.IndexOf(alarmResponse) + alarmResponse.Length;
-                    int last = response.LastIndexOf("\r");
-                    string ExtractedString = response.Substring(first, last - first);
-                    int responseCode = Convert.ToInt32(ExtractedString);
-                    BitArray bA = new BitArray(System.BitConverter.GetBytes(responseCode));
-                    Sm.AlarmCode = new Stepper.AlarmCode(bA);
-                }
-                else if (response.Contains(positionResponse))
-                {
-                    int first = response.IndexOf(positionResponse) + positionResponse.Length;
-                    int last = response.LastIndexOf("\r");
-                    string extractedString = response.Substring(first, last - first);
-                    long encoderPosition = long.Parse(extractedString);
-                    Sm.EncoderPosition = encoderPosition;
-                }
-                else if (response.Contains(motorStatusResponse))
-                {
-                    int first = response.IndexOf(motorStatusResponse) + motorStatusResponse.Length;
-                    int last = response.LastIndexOf("\r");
-                    string extractedString = response.Substring(first, last - first);
-                    int responseCode = Convert.ToInt32(extractedString);
-                    BitArray bA = new BitArray(System.BitConverter.GetBytes(responseCode));
-                    Sm.MotorStatus = new Stepper.MotorStatus(bA);
-                }
-                else if (response.Contains(encoderPositionResponse))
-                {
-                    int first = response.IndexOf(encoderPositionResponse) + encoderPositionResponse.Length;
-                    int last = response.LastIndexOf("\r");
-                    string extractedString = response.Substring(first, last - first);
+                    //Process codes
+                    string response = Encoding.UTF8.GetString(received);
+                    int last = response.LastIndexOf("\r", StringComparison.Ordinal);
+                    response = response.Substring(0, last - 0);
 
-                    Sm.encoderCounts = Convert.ToDouble(extractedString);
+                    Log.Debug($"Response: {response}");
+                    if (response.Contains(encoderCountsResponse)) // returned encoder position
+                    {
+                        int first = response.IndexOf(encoderCountsResponse, StringComparison.Ordinal) +
+                                    encoderCountsResponse.Length;
+                        last = response.Length;
+                        string extractedString = response.Substring(first, last - first);
 
+                        double encoderCounts = double.Parse(extractedString);
+                        Log.Info($"Encoder Counts: {encoderCounts}");
+                        Sm.EncoderCounts = encoderCounts;
+                    }
+                    else if (response.Contains(alarmResponse)) // returned alarm code
+                    {
+                        int first = response.IndexOf(alarmResponse, StringComparison.Ordinal) + alarmResponse.Length;
+                        last = response.Length;
+                        string extractedString = response.Substring(first, last - first);
+                        int responseCode = Convert.ToInt32(extractedString);
+                        BitArray bA = new BitArray(BitConverter.GetBytes(responseCode));
+                        Sm.AlarmCode = new AlarmCode(bA);
+                        Log.Info($"Alarm Code: {Sm.AlarmCode}");
+                    }
+                    else if (response.Contains(positionResponse))
+                    {
+                        int first = response.IndexOf(positionResponse, StringComparison.Ordinal) +
+                                    positionResponse.Length;
+                        last = response.Length;
+                        string extractedString = response.Substring(first, last - first);
+                        long encoderPosition = long.Parse(extractedString);
+                        Sm.EncoderPosition = encoderPosition;
+                        Log.Info($"Encoder Position: {Sm.EncoderPosition}");
+                    }
+                    else if (response.Contains(motorStatusResponse))
+                    {
+                        int first = response.IndexOf(motorStatusResponse, StringComparison.Ordinal) +
+                                    motorStatusResponse.Length;
+                        last = response.Length;
+                        string extractedString = response.Substring(first, last - first);
+                        int responseCode = Convert.ToInt32(extractedString);
+                        BitArray bA = new BitArray(BitConverter.GetBytes(responseCode));
+                        Sm.MotorStatus = new MotorStatus(bA);
+                        Log.Info($"Motor Status: {Sm.MotorStatus}");
+                    }
+                    else if (response.Contains(encoderPositionResponse))
+                    {
+                        int first = response.IndexOf(encoderPositionResponse, StringComparison.Ordinal) +
+                                    encoderPositionResponse.Length;
+                        last = response.Length;
+                        string extractedString = response.Substring(first, last - first);
+
+                        Sm.EncoderCounts = Convert.ToDouble(extractedString);
+                        Log.Info($"Encoder Position: {Sm.EncoderCounts}");
+                    }
+                    else if (response.Contains(modelResponse))
+                    {
+                        int first = response.IndexOf(encoderPositionResponse, StringComparison.Ordinal) +
+                                    modelResponse.Length;
+                        last = response.Length;
+                        string extractedString = response.Substring(first, last - first);
+                        Sm.Model = extractedString;
+                    }
+                    else if (defaultReceived)
+                    {
+                        // Log.Info($"response : {response} received.");
+                        Debug.Print(response);
+                        defaultReceived = false;
+                    }
+                    else
+                    {
+                        Log.Error($"Unhandled Response: {response} received.");
+                        Debug.Print(response);
+                    }
+
+                    _udpClient.BeginReceive(ReceiveCallBack, null);
                 }
-                else
+                catch (Exception e)
                 {
-                    Debug.Print(response);
+                    _udpClient.BeginReceive(ReceiveCallBack, null);
+                    Log.Error(e.Message);
                 }
-
-                _udpClient.BeginReceive(new AsyncCallback(ReceiveCallBack), null);
             }
             catch (Exception e)
             {
+                Log.Error($"error: {e.Message} received.");
                 Debug.Print(e.Message);
             }
         }
@@ -210,6 +282,7 @@ namespace AppliedMotion.Stepper
             sendBytes[sendBytes.Length - 1] = 13;
             _udpClient.Send(sendBytes, sendBytes.Length);
             Debug.Print($"TX: {command} @ {DateTime.Now}");
+            Log.Info($"TX: { command} @ { DateTime.Now}");
         }
 
         #endregion Methods

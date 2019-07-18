@@ -1,6 +1,6 @@
-﻿using System.Net;
+﻿using PostSharp.Patterns.Model;
+using System.Net;
 using System.Net.Sockets;
-using PostSharp.Patterns.Model;
 
 namespace AppliedMotion.Stepper
 {
@@ -14,6 +14,7 @@ namespace AppliedMotion.Stepper
             #region Fields
 
             public IPEndPoint IpEndPoint;
+
             public UdpClient udpState;
 
             #endregion Fields

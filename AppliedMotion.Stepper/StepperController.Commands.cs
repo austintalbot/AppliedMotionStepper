@@ -1,8 +1,7 @@
-﻿using System;
+﻿using PostSharp.Patterns.Model;
+using System;
 using System.Diagnostics;
-using System.Security.Policy;
 using System.Threading;
-using PostSharp.Patterns.Model;
 
 namespace AppliedMotion.Stepper
 {
@@ -11,35 +10,24 @@ namespace AppliedMotion.Stepper
     {
         #region Methods
 
-        public void SetCCWLimit(double counts)
-        {
-            SendSclCommandAndGetResponse($"LM{counts}");
-        }
-
-        public void ClearCCWLimit()
-        {
-            SendSclCommandAndGetResponse($"LM0");
-        }
-
-        public void SetCWLimit(double counts)
-        {
-            SendSclCommandAndGetResponse($"LP{counts}");
-        }
-
-        public void ClearCWLimit()
-        {
-            SendSclCommandAndGetResponse($"LP0");
-        }
-
-
         public void ChangeJogSpeed(double speed)
         {
-            SendSclCommandAndGetResponse($"CS{System.Math.Round(speed, 2)}");
+            SendSclCommandAndGetResponse($"CS{Math.Round(speed, 2)}");
         }
 
         public void ClearAlarms()
         {
             SendSclCommand("AR");
+        }
+
+        public void ClearCcwLimit()
+        {
+            SendSclCommandAndGetResponse($"LM0");
+        }
+
+        public void ClearCwLimit()
+        {
+            SendSclCommandAndGetResponse($"LP0");
         }
 
         public void DisableMotor()
@@ -64,7 +52,7 @@ namespace AppliedMotion.Stepper
 
         public void GetEncoderPosition()
         {
-            SendSclCommand("IP");
+            SendSclCommandAndGetResponse("IP");
         }
 
         public void GetModel()
@@ -87,7 +75,7 @@ namespace AppliedMotion.Stepper
         public void MoveToAbsolutePosition(long position)
         {
             SendSclCommand($"DI{position}");
-            SendSclCommand($"FP");
+            SendSclCommandAndGetResponse($"FP");
             WaitForStop();
         }
 
@@ -97,22 +85,37 @@ namespace AppliedMotion.Stepper
             SendSclCommand($"SP{newValue}");
         }
 
+        public void SetCcwLimit(double counts)
+        {
+            SendSclCommandAndGetResponse($"LM{counts}");
+        }
+
+        public void SetCwLimit(double counts)
+        {
+            SendSclCommandAndGetResponse($"LP{counts}");
+        }
+
+        public void SetFormatDecimal()
+        {
+            SendSclCommand("IFD");
+        }
+
         public void SetNumberStepsPerRevolution(int numberSteps)
         {
             // ensure that number is divisible by two
-            Math.DivRem(numberSteps, 2, out int EvenNumberSteps);
-            EvenNumberSteps = numberSteps + EvenNumberSteps;
-            if (EvenNumberSteps <= MaxStepsPerRev && EvenNumberSteps >= MinStepsPerRev)
+            Math.DivRem(numberSteps, 2, out int evenNumberSteps);
+            evenNumberSteps = numberSteps + evenNumberSteps;
+            if (evenNumberSteps <= MaxStepsPerRev && evenNumberSteps >= MinStepsPerRev)
             {
-                SendSclCommand($"EG{EvenNumberSteps}");
+                SendSclCommand($"EG{evenNumberSteps}");
                 Sm.StepsPerRev = numberSteps;
             }
-            else if (EvenNumberSteps >= MaxStepsPerRev)
+            else if (evenNumberSteps >= MaxStepsPerRev)
             {
                 SendSclCommand($"EG{MaxStepsPerRev}");
                 Sm.StepsPerRev = MaxStepsPerRev;
             }
-            else if (EvenNumberSteps <= MinStepsPerRev)
+            else if (evenNumberSteps <= MinStepsPerRev)
             {
                 SendSclCommand($"EG{MinStepsPerRev}");
                 Sm.StepsPerRev = MinStepsPerRev;
@@ -121,7 +124,7 @@ namespace AppliedMotion.Stepper
 
         public void SetVelocity(double revsPerSec)
         {
-            SendSclCommand($"VE{System.Math.Round(revsPerSec, 3)}");
+            SendSclCommand($"VE{Math.Round(revsPerSec, 3)}");
         }
 
         public void StartJog(double speed, double acceleration, double deceleration)
@@ -153,11 +156,12 @@ namespace AppliedMotion.Stepper
                 {
                     GetStatus();
                     GetAlarmCode();
-                    System.Threading.Thread.Sleep(00);
+                    Thread.Sleep(00);
                 }
             }
             catch (Exception e)
             {
+                Log.Error(e.Message);
                 Console.WriteLine(e.Message);
                 Debug.Print(e.Message);
             }
