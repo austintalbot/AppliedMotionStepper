@@ -1,10 +1,10 @@
-﻿using PostSharp.Patterns.Model;
+﻿
 using System;
 using System.Net;
 
 namespace AppliedMotion.Stepper
 {
-    [NotifyPropertyChanged]
+ 
     public class StepperMotor : IDisposable
     {
         #region Properties

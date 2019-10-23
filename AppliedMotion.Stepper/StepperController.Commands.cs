@@ -1,11 +1,11 @@
-﻿using PostSharp.Patterns.Model;
+﻿
 using System;
 using System.Diagnostics;
 using System.Threading;
 
 namespace AppliedMotion.Stepper
 {
-    [NotifyPropertyChanged]
+ 
     public partial class StepperController
     {
         #region Methods

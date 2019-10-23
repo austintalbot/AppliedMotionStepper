@@ -1,5 +1,5 @@
 ﻿using log4net;
-using PostSharp.Patterns.Model;
+
 using System;
 using System.Collections;
 using System.Diagnostics;
@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace AppliedMotion.Stepper
 {
-    [NotifyPropertyChanged]
+ 
     public partial class StepperController : IDisposable
     {
         #region Fields

@@ -1,9 +1,9 @@
-﻿using PostSharp.Patterns.Model;
+﻿
 using System.Collections;
 
 namespace AppliedMotion.Stepper
 {
-    [NotifyPropertyChanged]
+ 
     public class MotorStatus
     {
         #region Constructors
